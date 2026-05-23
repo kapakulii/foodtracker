@@ -3,7 +3,11 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-  <title>FoodTracker MVP</title>
+  <title>FoodTracker</title>
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='80' font-size='80'>🥗</text></svg>" />
   <style>
     :root {
       --term-bg: #100800;
@@ -480,26 +484,13 @@
       background: var(--term-fg);
       color: var(--term-bg);
     }
-
-    /* AI chat panel */
-    .ai-toggle {
-      position: fixed;
-      right: 1.2rem;
-      bottom: 1.2rem;
-      z-index: 40;
-      border: 1px solid var(--term-line);
-      padding: 0.35em 0.7em;
-      background: var(--term-bg);
-      color: var(--term-dim);
-      font: inherit;
-      font-size: 0.85em;
-      cursor: pointer;
-    }
-    .ai-toggle:hover {
-      color: var(--term-fg);
+    .fab.active {
+      background: var(--term-fg);
+      color: var(--term-bg);
       border-color: var(--term-fg);
     }
-    .ai-chat-panel {
+
+    /* AI chat panel */
       display: none;
       position: fixed;
       left: 0;
@@ -642,10 +633,23 @@
     }
 
     @media (max-width: 1199px) {
-      .fab { bottom: 6.5rem; }
+      .fab {
+        bottom: calc(8.5rem + env(safe-area-inset-bottom));
+        right: 0.45rem;
+        width: 2.8rem;
+        height: 2.8rem;
+        font-size: 1.4em;
+      }
+      .ai-toggle {
+        display: none;
+      }
       .ai-chat-panel {
         padding-left: 0.45rem;
         padding-right: 0.45rem;
+        max-height: 60vh;
+      }
+      .ai-chat-msgs {
+        max-height: 35vh;
       }
     }
   </style>
@@ -692,18 +696,16 @@
 
   <button class="fab" id="fab-btn" title="Добавить запись">+</button>
 
-  <button class="ai-toggle" id="ai-toggle">[AI]</button>
-
   <div class="ai-chat-panel" id="ai-chat-panel">
     <div class="ai-chat-header">
       <span>AI Ассистент</span>
       <button class="ai-chat-close" id="ai-chat-close">✕</button>
     </div>
     <div class="ai-chat-msgs" id="ai-chat-msgs">
-      <div class="ai-msg ai-msg-assistant" style="color:var(--term-dim);">Напиши, что хочешь изменить. Например:<br>— добавить овсянку на завтрак<br>— удалить последний приём пищи<br>— изменить цель калорий на 2000</div>
+      <div class="ai-msg ai-msg-assistant" style="color:var(--term-dim);">Напиши, что хочешь добавить. Например:<br>— куриная грудка 150г на обед<br>— гречка 200г с котлетой на ужин<br>— овсянка 300г на завтрак</div>
     </div>
     <div class="ai-chat-input-row">
-      <input id="ai-input" type="text" placeholder="Команда..." autocomplete="off">
+      <input id="ai-input" type="text" placeholder="Добавить еду..." autocomplete="off">
       <button id="ai-send">→</button>
     </div>
   </div>
@@ -1717,9 +1719,17 @@
     /* AI chat */
     function toggleAIChat() {
       const panel = document.getElementById("ai-chat-panel");
+      const fab = document.getElementById("fab-btn");
+      const isActive = panel.classList.contains("active");
       panel.classList.toggle("active");
-      if (panel.classList.contains("active")) {
-        document.getElementById("ai-input").focus();
+      fab.classList.toggle("active", !isActive);
+      if (!isActive) {
+        const input = document.getElementById("ai-input");
+        input.focus();
+        input.value = "";
+        if (window.innerWidth < 1200) {
+          setTimeout(() => panel.scrollIntoView({ behavior: "smooth", block: "nearest" }), 100);
+        }
       }
     }
 
@@ -1818,8 +1828,7 @@
     syncMobileView();
     setInterval(loadData, 60000);
 
-    document.getElementById("fab-btn").addEventListener("click", () => openEntryEditor(null));
-    document.getElementById("ai-toggle").addEventListener("click", toggleAIChat);
+    document.getElementById("fab-btn").addEventListener("click", toggleAIChat);
     document.getElementById("ai-chat-close").addEventListener("click", toggleAIChat);
     document.getElementById("ai-send").addEventListener("click", sendAIMessage);
     document.getElementById("ai-input").addEventListener("keydown", (e) => { if (e.key === "Enter") sendAIMessage(); });
