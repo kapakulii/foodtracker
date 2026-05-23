@@ -74,6 +74,19 @@ def migrate_schema(db: Session):
         db.commit()
         print("  Миграция: удалён старый уникальный индекс daily_metrics.date")
 
+    url = str(db.bind.url)
+    if "postgresql" in url:
+        cols = {c["name"]: c for c in inspector.get_columns("profile")}
+        id_col = cols.get("id", {})
+        if not id_col.get("autoincrement") and id_col.get("default") is None:
+            print("  Миграция: исправляю profile.id (добавляю SERIAL sequence)...")
+            db.execute(text("CREATE SEQUENCE IF NOT EXISTS profile_id_seq"))
+            db.execute(text("ALTER TABLE profile ALTER COLUMN id SET DEFAULT nextval('profile_id_seq')"))
+            db.execute(text("ALTER SEQUENCE profile_id_seq OWNED BY profile.id"))
+            max_id = db.execute(text("SELECT COALESCE(MAX(id), 0) FROM profile")).scalar()
+            db.execute(text(f"SELECT setval('profile_id_seq', {max_id + 1}, false)"))
+            db.commit()
+
 
 def migrate_from_json(db: Session):
     from app.models import FoodEntry, DailyMetric, Profile, User
