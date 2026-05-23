@@ -1,0 +1,19 @@
+{
+  "name": "kapakulii",
+  "goal": "weight_loss",
+  "sex": "male",
+  "activity_factor": 1.35,
+  "daily_calorie_target": 2200,
+  "protein_target_g": 140,
+  "fat_target_g": 73,
+  "carbs_target_g": 220,
+  "fiber_target_g": 25,
+  "sugar_target_g": 50,
+  "sodium_target_mg": 2300,
+  "saturated_fat_target_g": 20,
+  "current_weight_kg": 79,
+  "target_weight_kg": 72,
+  "height_cm": 172,
+  "age": 34,
+  "created_at": "2026-04-16"
+}
