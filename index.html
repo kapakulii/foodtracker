@@ -92,6 +92,29 @@
       color: var(--term-dim);
     }
 
+    .title, .stamp {
+      width: auto;
+      white-space: nowrap;
+    }
+
+    .stamp {
+      margin-left: auto;
+    }
+
+    .topbar-right {
+      display: flex;
+      align-items: baseline;
+      gap: 0.75em;
+      margin-left: auto;
+    }
+
+    .user-email {
+      margin: 0;
+      color: var(--term-dim);
+      width: auto;
+      white-space: nowrap;
+    }
+
     .mobile-tab-dock {
       display: none;
     }
@@ -590,6 +613,97 @@
 
     .ai-macros { color: var(--term-accent); font-weight: bold; }
 
+    /* Auth screen */
+    #auth-screen {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      min-height: 100dvh;
+      padding: 2rem;
+    }
+    #auth-screen.hidden { display: none; }
+    .auth-box {
+      border: 1px solid var(--term-line);
+      padding: 1.5rem;
+      max-width: 24rem;
+      width: 100%;
+    }
+    .auth-box h1 {
+      margin: 0 0 1rem;
+      color: var(--term-fg);
+      font-size: 1.1em;
+      text-transform: uppercase;
+      text-align: center;
+    }
+    .auth-box label {
+      display: block;
+      margin-top: 0.6rem;
+      color: var(--term-dim);
+    }
+    .auth-box input {
+      width: 100%;
+      background: #1a1208;
+      border: 1px solid var(--term-line);
+      color: var(--term-fg);
+      font: inherit;
+      font-size: 0.95em;
+      padding: 0.4em 0.5em;
+      margin-top: 0.15em;
+      box-sizing: border-box;
+    }
+    .auth-box input:focus {
+      outline: none;
+      border-color: var(--term-fg);
+    }
+    .auth-box .auth-actions {
+      display: flex;
+      gap: 0.5em;
+      margin-top: 1em;
+      flex-wrap: wrap;
+    }
+    .auth-box .auth-actions button {
+      border: 1px solid var(--term-line);
+      padding: 0.4em 0.9em;
+      background: transparent;
+      color: var(--term-fg);
+      font: inherit;
+      cursor: pointer;
+      flex: 1;
+    }
+    .auth-box .auth-actions button:hover {
+      border-color: var(--term-fg);
+    }
+    .auth-box .auth-actions button.primary {
+      background: var(--term-fg);
+      color: var(--term-bg);
+      border-color: var(--term-fg);
+      text-shadow: none;
+    }
+    .auth-box .auth-toggle {
+      text-align: center;
+      margin-top: 0.8rem;
+      color: var(--term-dim);
+      font-size: 0.9em;
+    }
+    .auth-box .auth-toggle a {
+      color: var(--term-fg);
+      cursor: pointer;
+      text-decoration: underline;
+    }
+    .auth-box .auth-error {
+      color: #e44;
+      margin-top: 0.5em;
+      font-size: 0.9em;
+    }
+    #app-shell-wrapper.hidden { display: none; }
+    #app-shell-wrapper {
+      width: 100%;
+      max-width: 100rem;
+      margin: 0 auto;
+    }
+
     @media (max-width: 1199px) {
       .modal-box.ai-modal {
         max-width: none;
@@ -693,10 +807,30 @@
   </style>
 </head>
 <body>
-  <div class="app-shell" id="app">
-    <div class="topbar">
-      <pre class="title" id="title">FOOD_TRACKER</pre>
+  <div id="auth-screen">
+    <div class="auth-box">
+      <h1>FOODTRACKER</h1>
+      <label>Email <input id="auth-email" type="email" autocomplete="email"></label>
+      <label>Пароль <input id="auth-password" type="password" autocomplete="current-password"></label>
+      <div class="auth-error" id="auth-error"></div>
+      <div class="auth-actions">
+        <button class="primary" id="auth-submit">ВОЙТИ</button>
+      </div>
+      <div class="auth-toggle">
+        Нет аккаунта? <a id="auth-toggle-link">Зарегистрироваться</a>
+      </div>
     </div>
+  </div>
+
+  <div id="app-shell-wrapper" class="hidden">
+    <div class="app-shell" id="app">
+      <div class="topbar">
+        <pre class="title" id="title">FOOD_TRACKER</pre>
+        <div class="topbar-right">
+          <pre class="user-email" id="user-email"></pre>
+          <pre class="stamp" id="stamp" style="cursor:pointer;color:var(--term-dim)">[выйти]</pre>
+        </div>
+      </div>
     <div class="mobile-tab-dock" id="mobile-tab-dock">
       <div class="mobile-secondary-tabs" id="mobile-secondary-tabs"></div>
       <div class="mobile-view-tabs" id="mobile-view-tabs">
@@ -730,6 +864,8 @@
     </div>
   </div>
 
+  </div> <!-- end app-shell-wrapper -->
+
   <div class="modal-overlay" id="modal-overlay"><div class="modal-box" id="modal-box"></div></div>
 
   <button class="fab" id="fab-btn" title="AI добавить еду">+</button>
@@ -744,6 +880,7 @@
     let globalProfile = null;
     let globalEntries = [];
     let globalDailyMetrics = [];
+    let currentUserEmail = null;
     let bitGlitchTimer = null;
     let panelMetrics = {
       leftChars: 72,
@@ -793,17 +930,7 @@
     }
 
     function getUserStamp(profile) {
-      if (profile.user_id) {
-        return "USER " + String(profile.user_id);
-      }
-
-      const source = String(profile.name || profile.created_at || "1");
-      let hash = 0;
-      for (let i = 0; i < source.length; i++) {
-        hash = ((hash << 5) - hash + source.charCodeAt(i)) | 0;
-      }
-      const number = String(Math.abs(hash)).slice(0, 6).padStart(6, "0");
-      return "USER " + number;
+      return currentUserEmail || "USER " + (profile.user_id || "?");
     }
 
     function getViewportMode() {
@@ -1619,7 +1746,8 @@
 
     function render(profile, entries, dailyMetrics, period) {
       panelMetrics = computePanelMetrics();
-      document.getElementById("title").textContent = "FOOD_TRACKER (" + getUserStamp(profile) + ")";
+      document.getElementById("title").textContent = "FOOD_TRACKER";
+      document.getElementById("user-email").textContent = currentUserEmail ? "(" + currentUserEmail + ")" : "";
       const selectedDate = currentDayView === "yesterday" ? shiftDate(today(), -1) : today();
       const sectionTitle = currentDayView === "yesterday" ? "ВЧЕРА" : "СЕГОДНЯ";
       const selectedEntries = entries.filter((entry) => entry.date === selectedDate);
@@ -1838,22 +1966,26 @@
     }
 
     async function apiGet(path) {
-      const r = await fetch(path + "?t=" + Date.now());
+      const r = await fetch(path + "?t=" + Date.now(), {credentials: "include"});
+      if (r.status === 401) { handleUnauthorized(); throw new Error("Unauthorized"); }
       if (!r.ok) throw new Error(await r.text());
       return r.json();
     }
     async function apiPost(path, data) {
-      const r = await fetch(path, { method: "POST", headers: {"Content-Type":"application/json"}, body: JSON.stringify(data) });
+      const r = await fetch(path, { method: "POST", headers: {"Content-Type":"application/json"}, body: JSON.stringify(data), credentials: "include" });
+      if (r.status === 401) { handleUnauthorized(); throw new Error("Unauthorized"); }
       if (!r.ok) throw new Error(await r.text());
       return r.json();
     }
     async function apiPut(path, data) {
-      const r = await fetch(path, { method: "PUT", headers: {"Content-Type":"application/json"}, body: JSON.stringify(data) });
+      const r = await fetch(path, { method: "PUT", headers: {"Content-Type":"application/json"}, body: JSON.stringify(data), credentials: "include" });
+      if (r.status === 401) { handleUnauthorized(); throw new Error("Unauthorized"); }
       if (!r.ok) throw new Error(await r.text());
       return r.json();
     }
     async function apiDelete(path) {
-      const r = await fetch(path, { method: "DELETE" });
+      const r = await fetch(path, { method: "DELETE", credentials: "include" });
+      if (r.status === 401) { handleUnauthorized(); throw new Error("Unauthorized"); }
       if (!r.ok) throw new Error(await r.text());
       return r.json();
     }
@@ -1872,11 +2004,99 @@
       }
     }
 
+    // --- Auth ---
+    let isRegisterMode = false;
+
+    function handleUnauthorized() {
+      globalProfile = null;
+      document.getElementById("app-shell-wrapper").classList.add("hidden");
+      document.getElementById("auth-screen").classList.remove("hidden");
+    }
+
+    function showAuthError(msg) {
+      document.getElementById("auth-error").textContent = msg;
+    }
+
+    async function handleAuthSubmit() {
+      const email = document.getElementById("auth-email").value.trim();
+      const password = document.getElementById("auth-password").value;
+      if (!email || !password) { showAuthError("Заполните email и пароль"); return; }
+      showAuthError("");
+      const endpoint = isRegisterMode ? "/api/auth/register" : "/api/auth/login";
+      try {
+        const r = await fetch(endpoint, {
+          method: "POST",
+          headers: {"Content-Type": "application/json"},
+          body: JSON.stringify({email, password}),
+          credentials: "include",
+        });
+        if (!r.ok) {
+          const err = await r.json();
+          showAuthError(err.detail || "Ошибка авторизации");
+          return;
+        }
+        const user = await r.json();
+        currentUserEmail = user.email;
+        document.getElementById("auth-screen").classList.add("hidden");
+        document.getElementById("app-shell-wrapper").classList.remove("hidden");
+        loadData();
+      } catch (e) {
+        showAuthError("Ошибка соединения: " + e.message);
+      }
+    }
+
+    function toggleAuthMode() {
+      isRegisterMode = !isRegisterMode;
+      document.getElementById("auth-submit").textContent = isRegisterMode ? "ЗАРЕГИСТРИРОВАТЬСЯ" : "ВОЙТИ";
+      const toggleLink = document.getElementById("auth-toggle-link");
+      toggleLink.textContent = isRegisterMode ? "Войти" : "Зарегистрироваться";
+      toggleLink.parentElement.innerHTML = (isRegisterMode ? "Уже есть аккаунт? " : "Нет аккаунта? ") + '<a id="auth-toggle-link">' + (isRegisterMode ? "Войти" : "Зарегистрироваться") + "</a>";
+      document.getElementById("auth-toggle-link").addEventListener("click", toggleAuthMode);
+      showAuthError("");
+    }
+
+    async function handleLogout() {
+      try {
+        await fetch("/api/auth/logout", { method: "POST", credentials: "include" });
+      } catch (_) {}
+      currentUserEmail = null;
+      globalProfile = null;
+      globalEntries = [];
+      globalDailyMetrics = [];
+      document.getElementById("user-email").textContent = "";
+      document.getElementById("app-shell-wrapper").classList.add("hidden");
+      document.getElementById("auth-screen").classList.remove("hidden");
+    }
+
+    async function checkAuth() {
+      try {
+        const r = await fetch("/api/auth/me", { credentials: "include" });
+        if (!r.ok) throw new Error("not authenticated");
+        const user = await r.json();
+        currentUserEmail = user.email;
+        document.getElementById("auth-screen").classList.add("hidden");
+        document.getElementById("app-shell-wrapper").classList.remove("hidden");
+        loadData();
+      } catch (_) {
+        document.getElementById("auth-screen").classList.remove("hidden");
+        document.getElementById("app-shell-wrapper").classList.add("hidden");
+      }
+    }
+
+    // Wire auth UI
+    document.getElementById("auth-submit").addEventListener("click", handleAuthSubmit);
+    document.getElementById("auth-password").addEventListener("keydown", (e) => { if (e.key === "Enter") handleAuthSubmit(); });
+    document.getElementById("auth-toggle-link").addEventListener("click", toggleAuthMode);
+    document.getElementById("stamp").addEventListener("click", handleLogout);
+
+    // Start: check auth first
     updateResponsiveScale();
-    loadData();
+    checkAuth();
     bindMobileViewTabs();
     syncMobileView();
-    setInterval(loadData, 60000);
+    setInterval(() => {
+      if (globalProfile) loadData();
+    }, 60000);
 
     document.getElementById("fab-btn").addEventListener("click", openAIChat);
     document.getElementById("modal-overlay").addEventListener("click", (e) => {

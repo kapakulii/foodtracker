@@ -10,20 +10,22 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, BASE_DIR)
 
 from app.database import engine, Base, SessionLocal
-from app.models import FoodEntry, DailyMetric, Profile
-from app.routes import entries, profile, metrics, summary, ai
-from app.migrate import migrate_from_json
+from app.models import FoodEntry, DailyMetric, Profile, User
+from app.routes import entries, profile, metrics, summary, ai, auth
+from app.migrate import migrate_from_json, migrate_schema
 
 app = FastAPI(title="FoodTracker")
 
+cors_origins = os.environ.get("CORS_ALLOW_ORIGINS", "http://localhost:8080").split(",")
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
+app.include_router(auth.router)
 app.include_router(entries.router)
 app.include_router(profile.router)
 app.include_router(metrics.router)
@@ -36,6 +38,7 @@ def startup():
     Base.metadata.create_all(bind=engine)
     db = SessionLocal()
     try:
+        migrate_schema(db)
         migrate_from_json(db)
     finally:
         db.close()

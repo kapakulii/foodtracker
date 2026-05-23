@@ -1,5 +1,6 @@
 import uuid
-from sqlalchemy import Column, String, Float, Integer, Text
+from datetime import date
+from sqlalchemy import Column, String, Float, Integer, Text, ForeignKey, Boolean, UniqueConstraint
 from app.database import Base
 
 
@@ -7,10 +8,29 @@ def make_id():
     return "e" + uuid.uuid4().hex[:5]
 
 
+class User(Base):
+    __tablename__ = "users"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    email = Column(String, nullable=False, unique=True, index=True)
+    password_hash = Column(String, nullable=False)
+    created_at = Column(String, nullable=False, default=date.today().isoformat)
+    is_active = Column(Boolean, default=True)
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "email": self.email,
+            "created_at": self.created_at,
+            "is_active": self.is_active,
+        }
+
+
 class FoodEntry(Base):
     __tablename__ = "food_entries"
 
     id = Column(String, primary_key=True, default=make_id)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
     date = Column(String, nullable=False, index=True)
     meal = Column(String, nullable=False)
     description = Column(String, nullable=False)
@@ -27,6 +47,7 @@ class FoodEntry(Base):
     def to_dict(self):
         return {
             "id": self.id,
+            "user_id": self.user_id,
             "date": self.date,
             "meal": self.meal,
             "description": self.description,
@@ -44,14 +65,18 @@ class FoodEntry(Base):
 
 class DailyMetric(Base):
     __tablename__ = "daily_metrics"
+    __table_args__ = (
+        UniqueConstraint("user_id", "date", name="uix_user_metric_date"),
+    )
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    date = Column(String, nullable=False, unique=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    date = Column(String, nullable=False, index=True)
     weight_kg = Column(Float, nullable=True)
     waist_cm = Column(Float, nullable=True)
 
     def to_dict(self):
-        d = {"date": self.date}
+        d = {"date": self.date, "user_id": self.user_id}
         if self.weight_kg is not None:
             d["weight_kg"] = self.weight_kg
         if self.waist_cm is not None:
@@ -62,7 +87,8 @@ class DailyMetric(Base):
 class Profile(Base):
     __tablename__ = "profile"
 
-    id = Column(Integer, primary_key=True, default=1)
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, unique=True)
     name = Column(String, default="")
     goal = Column(String, default="weight_loss")
     sex = Column(String, default="male")
@@ -83,6 +109,7 @@ class Profile(Base):
 
     def to_dict(self):
         return {
+            "user_id": self.user_id,
             "name": self.name,
             "goal": self.goal,
             "sex": self.sex,

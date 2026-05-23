@@ -67,8 +67,8 @@ def parse_ai_changes(user_message: str, today: str, context: dict) -> dict:
     }
 
 
-def apply_changes(changes: List[AIChange], db_session):
-    from app.models import FoodEntry, DailyMetric, Profile
+def apply_changes(changes: List[AIChange], db_session, user_id: int):
+    from app.models import FoodEntry, DailyMetric, Profile, make_id
 
     applied = 0
     errors = []
@@ -76,10 +76,10 @@ def apply_changes(changes: List[AIChange], db_session):
     for change in changes:
         try:
             if change.type == "add_entry":
-                from app.models import make_id
                 data = change.data
                 data.setdefault("id", make_id())
                 entry = FoodEntry(**data)
+                entry.user_id = user_id
                 db_session.add(entry)
                 applied += 1
 
@@ -88,7 +88,9 @@ def apply_changes(changes: List[AIChange], db_session):
                 if not entry_id:
                     errors.append("update_entry: missing id")
                     continue
-                entry = db_session.query(FoodEntry).filter(FoodEntry.id == entry_id).first()
+                entry = db_session.query(FoodEntry).filter(
+                    FoodEntry.id == entry_id, FoodEntry.user_id == user_id
+                ).first()
                 if not entry:
                     errors.append(f"update_entry: entry {entry_id} not found")
                     continue
@@ -102,7 +104,9 @@ def apply_changes(changes: List[AIChange], db_session):
                 if not entry_id:
                     errors.append("delete_entry: missing id")
                     continue
-                entry = db_session.query(FoodEntry).filter(FoodEntry.id == entry_id).first()
+                entry = db_session.query(FoodEntry).filter(
+                    FoodEntry.id == entry_id, FoodEntry.user_id == user_id
+                ).first()
                 if not entry:
                     errors.append(f"delete_entry: entry {entry_id} not found")
                     continue
@@ -110,9 +114,9 @@ def apply_changes(changes: List[AIChange], db_session):
                 applied += 1
 
             elif change.type == "update_profile":
-                profile = db_session.query(Profile).filter(Profile.id == 1).first()
+                profile = db_session.query(Profile).filter(Profile.user_id == user_id).first()
                 if not profile:
-                    profile = Profile(id=1)
+                    profile = Profile(user_id=user_id)
                     db_session.add(profile)
                 for key, val in change.data.items():
                     if hasattr(profile, key):
@@ -124,9 +128,11 @@ def apply_changes(changes: List[AIChange], db_session):
                 if not date:
                     errors.append("update_metric: missing date")
                     continue
-                metric = db_session.query(DailyMetric).filter(DailyMetric.date == date).first()
+                metric = db_session.query(DailyMetric).filter(
+                    DailyMetric.date == date, DailyMetric.user_id == user_id
+                ).first()
                 if not metric:
-                    metric = DailyMetric(date=date)
+                    metric = DailyMetric(date=date, user_id=user_id)
                     db_session.add(metric)
                 for key, val in change.data.items():
                     if key != "date" and hasattr(metric, key):

@@ -1,5 +1,22 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, EmailStr
 from typing import Optional, List
+
+
+class AuthRegisterRequest(BaseModel):
+    email: str
+    password: str
+
+
+class AuthLoginRequest(BaseModel):
+    email: str
+    password: str
+
+
+class AuthUserResponse(BaseModel):
+    id: int
+    email: str
+    created_at: str
+    is_active: bool
 
 
 class FoodEntryCreate(BaseModel):
