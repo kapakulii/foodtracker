@@ -53,6 +53,13 @@ if os.path.exists(index_src) and os.path.abspath(index_src) != os.path.abspath(i
     import shutil
     shutil.copy2(index_src, index_dst)
 
+favicons_src = os.path.join(BASE_DIR, "assets", "favicons")
+if os.path.isdir(favicons_src):
+    for fname in os.listdir(favicons_src):
+        src = os.path.join(favicons_src, fname)
+        if os.path.isfile(src):
+            shutil.copy2(src, STATIC_DIR)
+
 app.mount("/data", StaticFiles(directory=os.path.join(BASE_DIR, "data")), name="data")
 app.mount("/", StaticFiles(directory=STATIC_DIR, html=True), name="static")
 
