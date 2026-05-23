@@ -1,4 +1,3 @@
-import traceback
 from datetime import date
 from fastapi import APIRouter, Depends, HTTPException, Response
 from sqlalchemy.orm import Session
@@ -37,25 +36,19 @@ def register(req: AuthRegisterRequest, response: Response, db: Session = Depends
     if existing:
         raise HTTPException(status_code=409, detail="Email already registered")
 
-    try:
-        user = User(
-            email=email,
-            password_hash=hash_password(password),
-            created_at=date.today().isoformat(),
-            is_active=True,
-        )
-        db.add(user)
-        db.flush()
+    user = User(
+        email=email,
+        password_hash=hash_password(password),
+        created_at=date.today().isoformat(),
+        is_active=True,
+    )
+    db.add(user)
+    db.flush()
 
-        profile = Profile(user_id=user.id)
-        db.add(profile)
-        db.commit()
-        db.refresh(user)
-    except Exception as e:
-        db.rollback()
-        tb = traceback.format_exc()
-        print("REGISTER ERROR:", tb, flush=True)
-        raise HTTPException(status_code=500, detail=f"Registration failed: {e}")
+    profile = Profile(user_id=user.id)
+    db.add(profile)
+    db.commit()
+    db.refresh(user)
 
     token = create_session_token(user.id)
     _set_session_cookie(response, token)
