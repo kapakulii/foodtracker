@@ -17,7 +17,7 @@ app = "foodtracker"
     handlers = ["tls", "http"]
     port = 443
 
-  [[services.concurrency]]
+  [services.concurrency]
     hard_limit = 25
     soft_limit = 10
     type = "connections"
