@@ -1,15 +1,18 @@
-from pydantic import BaseModel, Field, EmailStr
-from typing import Optional, List
+from pydantic import BaseModel, Field
+from typing import Optional, List, Literal
+
+_DATE_PATTERN = r"^\d{4}-\d{2}-\d{2}$"
+_MEAL_TYPES = Literal["breakfast", "lunch", "dinner", "snack"]
 
 
 class AuthRegisterRequest(BaseModel):
-    email: str
-    password: str
+    email: str = Field(max_length=255)
+    password: str = Field(min_length=8, max_length=128)
 
 
 class AuthLoginRequest(BaseModel):
-    email: str
-    password: str
+    email: str = Field(max_length=255)
+    password: str = Field(max_length=128)
 
 
 class AuthUserResponse(BaseModel):
@@ -20,33 +23,33 @@ class AuthUserResponse(BaseModel):
 
 
 class FoodEntryCreate(BaseModel):
-    date: str
-    meal: str
-    description: str
-    weight_g: float = 0
-    calories: float = 0
-    protein: float = 0
-    fat: float = 0
-    carbs: float = 0
-    fiber: float = 0
-    sugar: float = 0
-    sodium_mg: float = 0
-    saturated_fat: float = 0
+    date: str = Field(pattern=_DATE_PATTERN)
+    meal: _MEAL_TYPES
+    description: str = Field(max_length=500)
+    weight_g: float = Field(default=0, ge=0)
+    calories: float = Field(default=0, ge=0)
+    protein: float = Field(default=0, ge=0)
+    fat: float = Field(default=0, ge=0)
+    carbs: float = Field(default=0, ge=0)
+    fiber: float = Field(default=0, ge=0)
+    sugar: float = Field(default=0, ge=0)
+    sodium_mg: float = Field(default=0, ge=0)
+    saturated_fat: float = Field(default=0, ge=0)
 
 
 class FoodEntryUpdate(BaseModel):
-    date: Optional[str] = None
-    meal: Optional[str] = None
-    description: Optional[str] = None
-    weight_g: Optional[float] = None
-    calories: Optional[float] = None
-    protein: Optional[float] = None
-    fat: Optional[float] = None
-    carbs: Optional[float] = None
-    fiber: Optional[float] = None
-    sugar: Optional[float] = None
-    sodium_mg: Optional[float] = None
-    saturated_fat: Optional[float] = None
+    date: Optional[str] = Field(None, pattern=_DATE_PATTERN)
+    meal: Optional[_MEAL_TYPES] = None
+    description: Optional[str] = Field(None, max_length=500)
+    weight_g: Optional[float] = Field(None, ge=0)
+    calories: Optional[float] = Field(None, ge=0)
+    protein: Optional[float] = Field(None, ge=0)
+    fat: Optional[float] = Field(None, ge=0)
+    carbs: Optional[float] = Field(None, ge=0)
+    fiber: Optional[float] = Field(None, ge=0)
+    sugar: Optional[float] = Field(None, ge=0)
+    sodium_mg: Optional[float] = Field(None, ge=0)
+    saturated_fat: Optional[float] = Field(None, ge=0)
 
 
 class FoodEntryResponse(BaseModel):
@@ -66,37 +69,37 @@ class FoodEntryResponse(BaseModel):
 
 
 class DailyMetricUpdate(BaseModel):
-    weight_kg: Optional[float] = None
-    waist_cm: Optional[float] = None
+    weight_kg: Optional[float] = Field(None, ge=0)
+    waist_cm: Optional[float] = Field(None, ge=0)
 
 
 class ProfileUpdate(BaseModel):
-    name: Optional[str] = None
-    goal: Optional[str] = None
-    sex: Optional[str] = None
-    activity_factor: Optional[float] = None
-    daily_calorie_target: Optional[int] = None
-    protein_target_g: Optional[int] = None
-    fat_target_g: Optional[int] = None
-    carbs_target_g: Optional[int] = None
-    fiber_target_g: Optional[int] = None
-    sugar_target_g: Optional[int] = None
-    sodium_target_mg: Optional[int] = None
-    saturated_fat_target_g: Optional[int] = None
-    current_weight_kg: Optional[float] = None
-    target_weight_kg: Optional[float] = None
-    height_cm: Optional[int] = None
-    age: Optional[int] = None
+    name: Optional[str] = Field(None, max_length=100)
+    goal: Optional[str] = Field(None, max_length=50)
+    sex: Optional[str] = Field(None, pattern=r"^(male|female)$")
+    activity_factor: Optional[float] = Field(None, ge=1.0, le=2.5)
+    daily_calorie_target: Optional[int] = Field(None, ge=0)
+    protein_target_g: Optional[int] = Field(None, ge=0)
+    fat_target_g: Optional[int] = Field(None, ge=0)
+    carbs_target_g: Optional[int] = Field(None, ge=0)
+    fiber_target_g: Optional[int] = Field(None, ge=0)
+    sugar_target_g: Optional[int] = Field(None, ge=0)
+    sodium_target_mg: Optional[int] = Field(None, ge=0)
+    saturated_fat_target_g: Optional[int] = Field(None, ge=0)
+    current_weight_kg: Optional[float] = Field(None, ge=0)
+    target_weight_kg: Optional[float] = Field(None, ge=0)
+    height_cm: Optional[int] = Field(None, ge=50, le=300)
+    age: Optional[int] = Field(None, ge=0, le=150)
 
 
 class AIRequest(BaseModel):
-    message: str
+    message: str = Field(max_length=2000)
 
 
 class AIChange(BaseModel):
-    type: str = Field(..., description="add_entry / update_entry / delete_entry / update_profile / update_metric")
+    type: Literal["add_entry", "update_entry", "delete_entry", "update_profile", "update_metric"]
     data: dict = Field(default_factory=dict)
-    description: str = ""
+    description: str = Field(default="", max_length=500)
 
 
 class AIResponse(BaseModel):

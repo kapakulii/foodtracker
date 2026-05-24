@@ -7,7 +7,7 @@ from app.models import FoodEntry, DailyMetric, User
 from app.routes.profile import get_or_create_profile
 from app.schemas import AIRequest, AIApplyRequest, AIApplyResponse
 from app.services.ai_service import parse_ai_changes, apply_changes
-from app.deps.auth import get_current_user
+from app.deps.auth import get_current_user, csrf_protected
 
 router = APIRouter(prefix="/api/ai", tags=["ai"])
 
@@ -38,20 +38,20 @@ def build_context(db: Session, user_id: int) -> dict:
 
 
 @router.post("/parse")
-def ai_parse(req: AIRequest, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+def ai_parse(req: AIRequest, db: Session = Depends(get_db), current_user: User = Depends(get_current_user), _=Depends(csrf_protected)):
     if not os.environ.get("OPENAI_API_KEY"):
-        return {"changes": [], "explanation": "AI не настроен: укажите OPENAI_API_KEY в переменных окружения."}
+        raise HTTPException(400, "AI не настроен: укажите OPENAI_API_KEY в переменных окружения.")
     today = date.today().isoformat()
     context = build_context(db, current_user.id)
     try:
         result = parse_ai_changes(req.message, today, context)
         return result
     except Exception as e:
-        return {"changes": [], "explanation": f"Ошибка AI: {str(e)}"}
+        raise HTTPException(500, f"Ошибка AI: {str(e)}")
 
 
 @router.post("/apply", response_model=AIApplyResponse)
-def ai_apply(req: AIApplyRequest, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+def ai_apply(req: AIApplyRequest, db: Session = Depends(get_db), current_user: User = Depends(get_current_user), _=Depends(csrf_protected)):
     if not req.changes:
         raise HTTPException(400, "No changes to apply")
     result = apply_changes(req.changes, db, current_user.id)

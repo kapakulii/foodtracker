@@ -1,9 +1,17 @@
 import os
+import secrets
 from typing import Optional
 import bcrypt
 from itsdangerous import URLSafeTimedSerializer, BadSignature, SignatureExpired
 
-_SECRET = os.environ.get("AUTH_SECRET_KEY", "dev-insecure-key-change-me")
+_ENV = os.environ.get("ENV", "development")
+_SECRET = os.environ.get("AUTH_SECRET_KEY", "")
+if not _SECRET:
+    if _ENV == "production":
+        raise RuntimeError("AUTH_SECRET_KEY обязателен в production")
+    _SECRET = "dev-insecure-key-change-me"
+    import warnings
+    warnings.warn("AUTH_SECRET_KEY не задан — используется небезопасный dev-ключ", RuntimeWarning)
 _SERIALIZER = URLSafeTimedSerializer(_SECRET, salt="foodtracker-auth")
 _SESSION_DAYS = int(os.environ.get("AUTH_SESSION_DAYS", "14"))
 
@@ -26,3 +34,7 @@ def verify_session_token(token: str) -> Optional[int]:
         return data.get("user_id")
     except (BadSignature, SignatureExpired):
         return None
+
+
+def generate_csrf_token() -> str:
+    return secrets.token_hex(32)

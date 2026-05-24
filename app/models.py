@@ -5,7 +5,7 @@ from app.database import Base
 
 
 def make_id():
-    return "e" + uuid.uuid4().hex[:5]
+    return uuid.uuid4().hex
 
 
 class User(Base):

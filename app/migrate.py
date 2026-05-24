@@ -1,27 +1,29 @@
 import json
 import os
+import warnings
 from datetime import date
 from sqlalchemy import inspect, text
 from sqlalchemy.orm import Session
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
+LEGACY_USER_EMAIL = os.environ.get("LEGACY_USER_EMAIL", "").strip()
+LEGACY_USER_PASSWORD = os.environ.get("LEGACY_USER_PASSWORD", "").strip()
+
 
 def _ensure_legacy_user(db: Session):
     from app.models import User
     from app.services.auth_service import hash_password
 
-    user = db.query(User).filter(User.email == "kapakulii@gmail.com").first()
+    if not LEGACY_USER_EMAIL or not LEGACY_USER_PASSWORD:
+        warnings.warn("LEGACY_USER_EMAIL / LEGACY_USER_PASSWORD не заданы — миграция legacy-пользователя пропущена")
+        return None
+
+    user = db.query(User).filter(User.email == LEGACY_USER_EMAIL).first()
     if not user:
-        legacy = db.query(User).filter(User.email == "legacy@local").first()
-        if legacy:
-            legacy.email = "kapakulii@gmail.com"
-            legacy.password_hash = hash_password("22446688")
-            db.commit()
-            return legacy.id
         user = User(
-            email="kapakulii@gmail.com",
-            password_hash=hash_password("22446688"),
+            email=LEGACY_USER_EMAIL,
+            password_hash=hash_password(LEGACY_USER_PASSWORD),
             created_at=date.today().isoformat(),
             is_active=True,
         )
@@ -56,15 +58,16 @@ def migrate_schema(db: Session):
 
     legacy_id = _ensure_legacy_user(db)
 
-    db.query(FoodEntry).filter(FoodEntry.user_id.is_(None)).update(
-        {FoodEntry.user_id: legacy_id}, synchronize_session=False
-    )
-    db.query(DailyMetric).filter(DailyMetric.user_id.is_(None)).update(
-        {DailyMetric.user_id: legacy_id}, synchronize_session=False
-    )
-    db.query(Profile).filter(Profile.user_id.is_(None)).update(
-        {Profile.user_id: legacy_id}, synchronize_session=False
-    )
+    if legacy_id is not None:
+        db.query(FoodEntry).filter(FoodEntry.user_id.is_(None)).update(
+            {FoodEntry.user_id: legacy_id}, synchronize_session=False
+        )
+        db.query(DailyMetric).filter(DailyMetric.user_id.is_(None)).update(
+            {DailyMetric.user_id: legacy_id}, synchronize_session=False
+        )
+        db.query(Profile).filter(Profile.user_id.is_(None)).update(
+            {Profile.user_id: legacy_id}, synchronize_session=False
+        )
     db.commit()
 
     inspector = inspect(db.connection())
@@ -105,36 +108,38 @@ def migrate_from_json(db: Session):
             log = json.load(f)
 
         legacy_user_id = _ensure_legacy_user(db)
+        if legacy_user_id is not None:
+            for entry_data in log.get("entries", []):
+                entry = FoodEntry(
+                    user_id=legacy_user_id,
+                    id=entry_data.get("id", ""),
+                    date=entry_data.get("date", ""),
+                    meal=entry_data.get("meal", ""),
+                    description=entry_data.get("description", ""),
+                    weight_g=entry_data.get("weight_g", 0),
+                    calories=entry_data.get("calories", 0),
+                    protein=entry_data.get("protein", 0),
+                    fat=entry_data.get("fat", 0),
+                    carbs=entry_data.get("carbs", 0),
+                    fiber=entry_data.get("fiber", 0),
+                    sugar=entry_data.get("sugar", 0),
+                    sodium_mg=entry_data.get("sodium_mg", 0),
+                    saturated_fat=entry_data.get("saturated_fat", 0),
+                )
+                db.add(entry)
 
-        for entry_data in log.get("entries", []):
-            entry = FoodEntry(
-                user_id=legacy_user_id,
-                id=entry_data.get("id", ""),
-                date=entry_data.get("date", ""),
-                meal=entry_data.get("meal", ""),
-                description=entry_data.get("description", ""),
-                weight_g=entry_data.get("weight_g", 0),
-                calories=entry_data.get("calories", 0),
-                protein=entry_data.get("protein", 0),
-                fat=entry_data.get("fat", 0),
-                carbs=entry_data.get("carbs", 0),
-                fiber=entry_data.get("fiber", 0),
-                sugar=entry_data.get("sugar", 0),
-                sodium_mg=entry_data.get("sodium_mg", 0),
-                saturated_fat=entry_data.get("saturated_fat", 0),
-            )
-            db.add(entry)
+            for metric_data in log.get("daily_metrics", []):
+                metric = DailyMetric(
+                    user_id=legacy_user_id,
+                    date=metric_data.get("date", ""),
+                    weight_kg=metric_data.get("weight_kg"),
+                    waist_cm=metric_data.get("waist_cm"),
+                )
+                db.add(metric)
 
-        for metric_data in log.get("daily_metrics", []):
-            metric = DailyMetric(
-                user_id=legacy_user_id,
-                date=metric_data.get("date", ""),
-                weight_kg=metric_data.get("weight_kg"),
-                waist_cm=metric_data.get("waist_cm"),
-            )
-            db.add(metric)
-
-        print(f"  Миграция: импортировано записей о еде из JSON")
+            print(f"  Миграция: импортировано записей о еде из JSON")
+        else:
+            print("  Миграция: LEGACY_USER_EMAIL не задан, импорт еды из JSON пропущен")
 
     if os.path.exists(profile_path):
         with open(profile_path, "r", encoding="utf-8") as f:
@@ -144,11 +149,14 @@ def migrate_from_json(db: Session):
         if not existing:
             if legacy_user_id is None:
                 legacy_user_id = _ensure_legacy_user(db)
-            profile = Profile(user_id=legacy_user_id)
-            for key, val in profile_data.items():
-                if hasattr(profile, key):
-                    setattr(profile, key, val)
-            db.add(profile)
-            print(f"  Миграция: импортирован профиль из JSON")
+            if legacy_user_id is not None:
+                profile = Profile(user_id=legacy_user_id)
+                for key, val in profile_data.items():
+                    if hasattr(profile, key):
+                        setattr(profile, key, val)
+                db.add(profile)
+                print(f"  Миграция: импортирован профиль из JSON")
+            else:
+                print("  Миграция: LEGACY_USER_EMAIL не задан, импорт профиля пропущен")
 
     db.commit()

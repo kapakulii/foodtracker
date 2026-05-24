@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models import Profile, User
 from app.schemas import ProfileUpdate
-from app.deps.auth import get_current_user
+from app.deps.auth import get_current_user, csrf_protected
 
 router = APIRouter(prefix="/api/profile", tags=["profile"])
 
@@ -24,7 +24,7 @@ def get_profile(db: Session = Depends(get_db), current_user: User = Depends(get_
 
 
 @router.put("")
-def update_profile(data: ProfileUpdate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+def update_profile(data: ProfileUpdate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user), _=Depends(csrf_protected)):
     profile = get_or_create_profile(db, current_user.id)
     for key, val in data.model_dump(exclude_unset=True).items():
         setattr(profile, key, val)

@@ -1,13 +1,34 @@
 import os
 import sys
+import logging
 import threading
+import uuid
 import webbrowser
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.datastructures import MutableHeaders
+from sqlalchemy import inspect
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, BASE_DIR)
+
+_request_id = threading.local()
+
+
+class RequestIDFilter(logging.Filter):
+    def filter(self, record):
+        record.request_id = getattr(_request_id, "value", "-")
+        return True
+
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] [%(request_id)s] %(name)s: %(message)s",
+    datefmt="%H:%M:%S",
+)
+log = logging.getLogger("foodtracker")
+log.addFilter(RequestIDFilter())
 
 from app.database import engine, Base, SessionLocal
 from app.models import FoodEntry, DailyMetric, Profile, User
@@ -16,7 +37,25 @@ from app.migrate import migrate_from_json, migrate_schema
 
 app = FastAPI(title="FoodTracker")
 
-cors_origins = os.environ.get("CORS_ALLOW_ORIGINS", "http://localhost:8080").split(",")
+
+@app.get("/healthz")
+def healthz():
+    return {"status": "ok", "app": "FoodTracker"}
+
+
+@app.middleware("http")
+async def request_id_middleware(request, call_next):
+    rid = request.headers.get("X-Request-ID", uuid.uuid4().hex[:12])
+    _request_id.value = rid
+    response = await call_next(request)
+    response.headers["X-Request-ID"] = rid
+    log.info("%s %s -> %s", request.method, request.url.path, response.status_code)
+    return response
+
+cors_raw = os.environ.get("CORS_ALLOW_ORIGINS", "http://localhost:8080")
+cors_origins = [o.strip() for o in cors_raw.split(",") if o.strip()]
+if cors_origins == ["*"] and os.environ.get("ENV") == "production":
+    raise RuntimeError("CORS_ALLOW_ORIGINS='*' запрещён в production при allow_credentials=True")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=cors_origins,
@@ -33,9 +72,23 @@ app.include_router(summary.router)
 app.include_router(ai.router)
 
 
+def _run_alembic():
+    from alembic.config import Config
+    from alembic import command
+
+    cfg = Config(os.path.join(BASE_DIR, "alembic.ini"))
+    inspector = inspect(engine)
+    if "alembic_version" not in inspector.get_table_names():
+        Base.metadata.create_all(bind=engine)
+        command.stamp(cfg, "head")
+    else:
+        command.upgrade(cfg, "head")
+
+
 @app.on_event("startup")
 def startup():
-    Base.metadata.create_all(bind=engine)
+    log.info("Starting FoodTracker…")
+    _run_alembic()
     db = SessionLocal()
     try:
         migrate_schema(db)

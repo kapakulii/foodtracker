@@ -4,7 +4,7 @@ from typing import Optional
 from app.database import get_db
 from app.models import DailyMetric, User
 from app.schemas import DailyMetricUpdate
-from app.deps.auth import get_current_user
+from app.deps.auth import get_current_user, csrf_protected
 
 router = APIRouter(prefix="/api/metrics", tags=["metrics"])
 
@@ -29,7 +29,7 @@ def list_metrics(
 
 
 @router.put("/{metric_date}")
-def upsert_metric(metric_date: str, data: DailyMetricUpdate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+def upsert_metric(metric_date: str, data: DailyMetricUpdate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user), _=Depends(csrf_protected)):
     metric = db.query(DailyMetric).filter(DailyMetric.date == metric_date, DailyMetric.user_id == current_user.id).first()
     if not metric:
         metric = DailyMetric(date=metric_date, user_id=current_user.id)
