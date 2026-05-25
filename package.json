@@ -1,0 +1,11 @@
+{
+  "name": "foodtracker",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "lint:js": "eslint static/js/**/*.js"
+  },
+  "devDependencies": {
+    "eslint": "^9.39.4"
+  }
+}

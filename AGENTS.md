@@ -64,7 +64,12 @@ AI **НЕ ДОЛЖЕН** напрямую изменять БД. Полный ц
 
 ## Сборка / тесты / CI
 
-Нет пакетного менеджера, линтера, тестов и CI. Прокси `/data/` для обратной совместимости.
+```bash
+pytest tests/                 # API smoke + import-контракты
+npm run lint:js                # ESLint (no-undef, no-unused-vars)
+```
+
+Прокси `/data/` для обратной совместимости.
 
 ## Архитектура
 
@@ -76,4 +81,6 @@ AI **НЕ ДОЛЖЕН** напрямую изменять БД. Полный ц
 - `app/services/ai_service.py` — интеграция с OpenAI-compatible API
 - `app/migrate.py` — импорт JSON → SQLite при первом запуске
 - `index.html` — SPA на ванильном JS, вся логика рендеринга в браузере
+- `static/js/` — ES-модули: `state.js`, `utils.js`, `api.js`, `app.js` (точка входа)
+- `static/js/ui/` — подмодули: `render.js`, `meals.js`, `ai-chat.js`, `auth.js`, `tabs.js`, `animation.js`
 - Терминальная эстетика, русский интерфейс

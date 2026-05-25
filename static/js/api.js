@@ -1,5 +1,3 @@
-import { state } from "./state.js";
-
 let _onUnauthorized = null;
 
 export function setOnUnauthorized(cb) {
