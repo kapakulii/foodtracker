@@ -9,7 +9,6 @@ import { openGoalEditor } from "./ui/profile-goal.js";
 import { handleUnauthorized, handleAuthSubmit, toggleAuthMode, handleLogout, checkAuth } from "./ui/auth.js";
 import { bindDayTabs, bindPeriodTabs, syncMobileView, bindMobileViewTabs } from "./ui/tabs.js";
 import { animatePre, startBitGlitch } from "./ui/animation.js";
-import { startBoot, showBootDelay, finishBoot } from "./ui/boot.js";
 
 /* ── Main render ─────────────────────────── */
 
@@ -52,35 +51,16 @@ export async function loadData() {
 setOnUnauthorized(handleUnauthorized);
 
 async function init() {
-  startBoot();
-
-  let bootResolved = false;
-  const authPromise = checkAuth();
-  const delayTimer = setTimeout(() => {
-    if (bootResolved) return;
-    showBootDelay(async () => {
-      if (bootResolved) return;
-      bootResolved = true;
-      setFabVisible(false);
-      await finishBoot("auth", { minVisibleMs: 0, resultHoldMs: 250 });
-    });
-  }, 9000);
-
-  const authenticated = await authPromise;
-  clearTimeout(delayTimer);
-  if (bootResolved) return;
-  bootResolved = true;
-
-  setFabVisible(authenticated);
-  await finishBoot(authenticated ? "app" : "auth", { minVisibleMs: 1500, resultHoldMs: 380 });
-
+  const authenticated = await checkAuth();
+  document.body.classList.toggle("auth-screen-shown", !authenticated);
   if (authenticated) {
+    document.getElementById("auth-screen").classList.add("hidden");
+    document.getElementById("app-shell-wrapper").classList.remove("hidden");
     await loadData();
+  } else {
+    document.getElementById("auth-screen").classList.remove("hidden");
+    document.getElementById("app-shell-wrapper").classList.add("hidden");
   }
-}
-
-function setFabVisible(visible) {
-  document.body.classList.toggle("auth-screen-shown", !visible);
 }
 
 document.getElementById("auth-submit").addEventListener("click", handleAuthSubmit);

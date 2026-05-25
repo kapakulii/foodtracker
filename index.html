@@ -60,7 +60,6 @@
       line-height: 1.35;
       text-shadow: 0 0 6px var(--term-glow);
     }
-    body.boot-layer { overflow: hidden; }
     :focus-visible {
       outline: 1px solid var(--term-fg);
       outline-offset: 2px;
@@ -382,6 +381,10 @@
     .fab:hover { background: transparent; color: var(--term-fg); }
     .fab:active { transform: scale(0.95); }
     .fab.active { transform: rotate(45deg); }
+    body.auth-screen-shown {
+      overflow: hidden;
+      padding: 0;
+    }
     body.auth-screen-shown .fab { display: none; }
 
     /* ── AI Chat ─────────────────────────────────────────── */
@@ -506,66 +509,6 @@
     }
 
     /* ── Auth Screen ─────────────────────────────────────── */
-    #boot-screen {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      position: fixed;
-      inset: 0;
-      z-index: 100;
-      background: var(--term-bg);
-      opacity: 1;
-      transition: opacity 0.35s ease;
-      height: calc(var(--vh, 100dvh));
-      overflow: hidden;
-      box-sizing: border-box;
-    }
-    #boot-screen.hidden { opacity: 0; pointer-events: none; }
-    #boot-screen #boot-content {
-      font-size: 0.9em;
-      line-height: 1.45;
-      width: 100%;
-      max-width: 42rem;
-      padding: var(--sp-xl);
-      margin: 0;
-      box-sizing: border-box;
-      overflow: hidden;
-    }
-    #boot-actions {
-      display: none;
-      width: 100%;
-      max-width: 42rem;
-      padding: 0 var(--sp-xl) var(--sp-xl) var(--sp-xl);
-      text-align: left;
-      box-sizing: border-box;
-    }
-    #boot-actions.active { display: block; }
-    .boot-continue-btn {
-      border: 1px solid var(--term-line);
-      background: transparent;
-      color: var(--term-fg);
-      font: inherit;
-      padding: 0.45em 0.8em;
-      cursor: pointer;
-    }
-    .boot-continue-btn:hover { border-color: var(--term-fg); }
-    .boot-done { color: var(--term-dim); }
-    .boot-active { color: var(--term-fg); }
-
-    @media (max-width: 1199px) {
-      #boot-screen { padding: 0; }
-      #boot-screen #boot-content {
-        font-size: 0.72em;
-        padding: var(--sp-md);
-        line-height: 1.25;
-      }
-      #boot-actions { padding: 0 var(--sp-md) var(--sp-md) var(--sp-md); }
-    }
-
-    @media (prefers-reduced-motion: reduce) {
-      #boot-screen { transition: none; }
-    }
     #auth-screen {
       display: flex;
       flex-direction: column;
@@ -760,11 +703,7 @@
   </style>
 </head>
 <body>
-  <div id="boot-screen">
-    <pre id="boot-content"></pre>
-    <div id="boot-actions"></div>
-  </div>
-  <div id="auth-screen">
+  <div id="auth-screen" class="hidden">
     <div class="auth-box">
       <h1>FOODTRACKER</h1>
       <label>Email <input id="auth-email" type="email" autocomplete="email"></label>
