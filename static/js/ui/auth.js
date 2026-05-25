@@ -1,13 +1,9 @@
 import { state } from "../state.js";
 import { loadData } from "../app.js";
 
-function setFabVisible(visible) {
-  document.body.classList.toggle("auth-screen-shown", !visible);
-}
-
 export function handleUnauthorized() {
   state.globalProfile = null;
-  setFabVisible(false);
+  document.body.classList.add("auth-screen-shown");
   document.getElementById("app-shell-wrapper").classList.add("hidden");
   document.getElementById("auth-screen").classList.remove("hidden");
 }
@@ -38,7 +34,7 @@ export async function handleAuthSubmit() {
     state.currentUserEmail = user.email;
     document.getElementById("auth-screen").classList.add("hidden");
     document.getElementById("app-shell-wrapper").classList.remove("hidden");
-    setFabVisible(true);
+    document.body.classList.remove("auth-screen-shown");
     loadData();
   } catch (e) { showAuthError("Ошибка соединения: " + e.message); }
 }
@@ -62,7 +58,7 @@ export async function handleLogout() {
   state.globalProfile = null;
   state.globalEntries = [];
   state.globalDailyMetrics = [];
-  setFabVisible(false);
+  document.body.classList.add("auth-screen-shown");
   document.getElementById("user-email").textContent = "";
   document.getElementById("app-shell-wrapper").classList.add("hidden");
   document.getElementById("auth-screen").classList.remove("hidden");
@@ -74,13 +70,8 @@ export async function checkAuth() {
     if (!r.ok) throw new Error("not authenticated");
     const user = await r.json();
     state.currentUserEmail = user.email;
-    document.getElementById("auth-screen").classList.add("hidden");
-    document.getElementById("app-shell-wrapper").classList.remove("hidden");
-    setFabVisible(true);
-    loadData();
+    return true;
   } catch {
-    setFabVisible(false);
-    document.getElementById("auth-screen").classList.remove("hidden");
-    document.getElementById("app-shell-wrapper").classList.add("hidden");
+    return false;
   }
 }

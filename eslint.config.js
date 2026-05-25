@@ -18,6 +18,7 @@ export default [
         confirm: "readonly",
         NodeFilter: "readonly",
         HTMLFormElement: "readonly",
+        performance: "readonly",
         requestAnimationFrame: "readonly",
         cancelAnimationFrame: "readonly",
         URL: "readonly",

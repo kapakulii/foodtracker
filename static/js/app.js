@@ -9,6 +9,7 @@ import { openGoalEditor } from "./ui/profile-goal.js";
 import { handleUnauthorized, handleAuthSubmit, toggleAuthMode, handleLogout, checkAuth } from "./ui/auth.js";
 import { bindDayTabs, bindPeriodTabs, syncMobileView, bindMobileViewTabs } from "./ui/tabs.js";
 import { animatePre, startBitGlitch } from "./ui/animation.js";
+import { startBoot, finishBoot } from "./ui/boot.js";
 
 /* ── Main render ─────────────────────────── */
 
@@ -50,6 +51,23 @@ export async function loadData() {
 
 setOnUnauthorized(handleUnauthorized);
 
+async function init() {
+  startBoot();
+
+  const authenticated = await checkAuth();
+
+  setFabVisible(authenticated);
+  finishBoot(authenticated ? "app" : "auth");
+
+  if (authenticated) {
+    loadData();
+  }
+}
+
+function setFabVisible(visible) {
+  document.body.classList.toggle("auth-screen-shown", !visible);
+}
+
 document.getElementById("auth-submit").addEventListener("click", handleAuthSubmit);
 document.getElementById("auth-password").addEventListener("keydown", (e) => { if (e.key === "Enter") handleAuthSubmit(); });
 document.getElementById("auth-toggle-link").addEventListener("click", toggleAuthMode);
@@ -57,7 +75,6 @@ document.getElementById("stamp").addEventListener("click", handleLogout);
 document.getElementById("goal-btn").addEventListener("click", openGoalEditor);
 
 updateResponsiveScale();
-checkAuth();
 bindMobileViewTabs();
 syncMobileView();
 setInterval(() => { if (state.globalProfile) loadData(); }, 60000);
@@ -78,3 +95,5 @@ if (window.visualViewport) {
   window.visualViewport.addEventListener("resize", updateVH);
   updateVH();
 }
+
+init();

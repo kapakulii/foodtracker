@@ -505,6 +505,35 @@
     }
 
     /* ── Auth Screen ─────────────────────────────────────── */
+    #boot-screen {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: fixed;
+      inset: 0;
+      z-index: 100;
+      background: var(--term-bg);
+      opacity: 1;
+      transition: opacity 0.35s ease;
+    }
+    #boot-screen.hidden { opacity: 0; pointer-events: none; }
+    #boot-screen #boot-content {
+      font-size: 0.9em;
+      line-height: 1.4;
+      max-width: 42rem;
+      width: 100%;
+      padding: var(--sp-xl);
+    }
+    .boot-done { color: var(--term-dim); }
+    .boot-active { color: var(--term-fg); }
+    .boot-spinner { display: inline-block; width: 1.2em; text-align: center; }
+    .boot-bar-wrap { display: inline-block; width: 14em; }
+    .boot-bar-fill { display: inline-block; white-space: pre; }
+
+    @media (prefers-reduced-motion: reduce) {
+      #boot-screen { transition: none; }
+      .boot-spinner { animation: none; }
+    }
     #auth-screen {
       display: flex;
       flex-direction: column;
@@ -699,6 +728,9 @@
   </style>
 </head>
 <body>
+  <div id="boot-screen">
+    <pre id="boot-content"></pre>
+  </div>
   <div id="auth-screen">
     <div class="auth-box">
       <h1>FOODTRACKER</h1>
