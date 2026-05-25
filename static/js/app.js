@@ -9,7 +9,7 @@ import { openGoalEditor } from "./ui/profile-goal.js";
 import { handleUnauthorized, handleAuthSubmit, toggleAuthMode, handleLogout, checkAuth } from "./ui/auth.js";
 import { bindDayTabs, bindPeriodTabs, syncMobileView, bindMobileViewTabs } from "./ui/tabs.js";
 import { animatePre, startBitGlitch } from "./ui/animation.js";
-import { startBoot, finishBoot } from "./ui/boot.js";
+import { startBoot, showBootDelay, finishBoot } from "./ui/boot.js";
 
 /* ── Main render ─────────────────────────── */
 
@@ -54,13 +54,28 @@ setOnUnauthorized(handleUnauthorized);
 async function init() {
   startBoot();
 
-  const authenticated = await checkAuth();
+  let bootResolved = false;
+  const authPromise = checkAuth();
+  const delayTimer = setTimeout(() => {
+    if (bootResolved) return;
+    showBootDelay(async () => {
+      if (bootResolved) return;
+      bootResolved = true;
+      setFabVisible(false);
+      await finishBoot("auth", { minVisibleMs: 0, resultHoldMs: 250 });
+    });
+  }, 9000);
+
+  const authenticated = await authPromise;
+  clearTimeout(delayTimer);
+  if (bootResolved) return;
+  bootResolved = true;
 
   setFabVisible(authenticated);
-  finishBoot(authenticated ? "app" : "auth");
+  await finishBoot(authenticated ? "app" : "auth", { minVisibleMs: 1500, resultHoldMs: 380 });
 
   if (authenticated) {
-    loadData();
+    await loadData();
   }
 }
 

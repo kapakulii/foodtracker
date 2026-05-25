@@ -523,7 +523,25 @@
       max-width: 42rem;
       width: 100%;
       padding: var(--sp-xl);
+      margin: 0;
     }
+    #boot-actions {
+      display: none;
+      max-width: 42rem;
+      width: 100%;
+      padding: 0 var(--sp-xl) var(--sp-xl) var(--sp-xl);
+      text-align: left;
+    }
+    #boot-actions.active { display: block; }
+    .boot-continue-btn {
+      border: 1px solid var(--term-line);
+      background: transparent;
+      color: var(--term-fg);
+      font: inherit;
+      padding: 0.45em 0.8em;
+      cursor: pointer;
+    }
+    .boot-continue-btn:hover { border-color: var(--term-fg); }
     .boot-done { color: var(--term-dim); }
     .boot-active { color: var(--term-fg); }
     .boot-spinner { display: inline-block; width: 1.2em; text-align: center; }
@@ -730,6 +748,7 @@
 <body>
   <div id="boot-screen">
     <pre id="boot-content"></pre>
+    <div id="boot-actions"></div>
   </div>
   <div id="auth-screen">
     <div class="auth-box">

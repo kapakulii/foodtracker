@@ -1,133 +1,155 @@
 const SPINNERS = ["◴", "◷", "◶", "◵"];
-const BAR_CHARS = ["░", "▒", "▓", "█"];
 
-let _timer = null;
-let _aborted = false;
+let timerId = null;
+let aborted = false;
+let bootStartedAt = 0;
 
 function renderSpinner(frame) {
   return `<span class="boot-spinner">${SPINNERS[frame % SPINNERS.length]}</span>`;
 }
 
-function renderBar(pct, width) {
-  const filled = Math.round((pct / 100) * width);
-  let html = "";
+function renderBar(percent, width) {
+  const clamped = Math.max(0, Math.min(100, percent));
+  const filled = Math.round((clamped / 100) * width);
+  let out = "";
   for (let i = 0; i < width; i++) {
-    if (i < filled) {
-      const depth = Math.min(3, Math.round(((i % 4) / 3) * 3));
-      html += `<span class="boot-bar-fill" style="color:var(--term-fg)">${BAR_CHARS[depth]}</span>`;
-    } else {
-      html += `<span class="boot-bar-fill" style="color:var(--inactive)">░</span>`;
-    }
+    out += `<span class="boot-bar-fill" style="color:var(--${i < filled ? 'term-fg' : 'inactive'})">${i < filled ? '█' : '░'}</span>`;
   }
-  return html;
+  return out;
 }
 
-function buildPhase(label, pct, done, frame) {
-  const spinnerChar = done ? "◉" : renderSpinner(frame);
-  return `<span class="${done ? 'boot-done' : 'boot-active'}">  ${spinnerChar}  ${label}</span>  [${renderBar(done ? 100 : Math.min(pct, 99), 18)}]  ${done ? "100%" : String(Math.min(pct, 99)).padStart(2) + "%"}`;
+function renderPhase(label, pct, done, frame) {
+  const icon = done ? "◉" : renderSpinner(frame);
+  const shownPct = done ? 100 : Math.min(99, Math.max(0, Math.round(pct)));
+  return `<span class="${done ? "boot-done" : "boot-active"}">  ${icon}  ${label}</span>  [${renderBar(done ? 100 : shownPct, 18)}]  ${String(shownPct).padStart(3)}%`;
+}
+
+function headerText() {
+  return (
+    "╔══════════════════════════════════════╗\n" +
+    "║         FOODTRACKER v2.0            ║\n" +
+    "║      ПОСЛЕДОВАТЕЛЬНОСТЬ ЗАПУСКА     ║\n" +
+    "╚══════════════════════════════════════╝\n\n"
+  );
+}
+
+function phasesText() {
+  return [
+    "ИНИЦИАЛИЗАЦИЯ ЯДРА",
+    "ПРОВЕРКА СЕССИИ",
+    "ЗАЩИЩЕННЫЙ КАНАЛ",
+    "ЗАГРУЗКА ПРОФИЛЯ",
+  ];
+}
+
+function clearActions() {
+  const actions = document.getElementById("boot-actions");
+  if (!actions) return;
+  actions.classList.remove("active");
+  actions.innerHTML = "";
 }
 
 export function startBoot() {
-  _aborted = false;
-  const el = document.getElementById("boot-content");
-  document.getElementById("boot-screen").classList.remove("hidden");
-  if (!el) return;
+  aborted = false;
+  bootStartedAt = performance.now();
+  const boot = document.getElementById("boot-screen");
+  const content = document.getElementById("boot-content");
+  if (!boot || !content) return;
+  boot.classList.remove("hidden");
+  clearActions();
 
-  const header =
-    "╔══════════════════════════════════════╗\n" +
-    "║         FOODTRACKER v2.0            ║\n" +
-    "║         BOOT SEQUENCE               ║\n" +
-    "╚══════════════════════════════════════╝\n\n";
-
-  const phases = [
-    "INITIALIZING CORE",
-    "VERIFYING SESSION TOKEN",
-    "ESTABLISHING SECURE LINK",
-    "LOADING USER CONTEXT",
-  ];
-
-  const startTime = performance.now();
-  const totalDuration = 3000;
+  const phases = phasesText();
+  const totalDuration = 3600;
   let frame = 0;
 
   function tick() {
-    if (_aborted) return;
-    const elapsed = performance.now() - startTime;
+    if (aborted) return;
+    const elapsed = performance.now() - bootStartedAt;
     const overallPct = Math.min(100, (elapsed / totalDuration) * 100);
-    frame++;
+    frame += 1;
 
-    let out = header;
+    let out = headerText();
     phases.forEach((phase, idx) => {
       const phaseStart = (idx / phases.length) * 100;
-      const phaseEnd = ((idx + 0.8) / phases.length) * 100;
-      let pct;
-      let done;
+      const phaseEnd = ((idx + 0.82) / phases.length) * 100;
+      let pct = 0;
+      let done = false;
       if (overallPct >= phaseEnd) {
         pct = 100;
         done = true;
       } else if (overallPct >= phaseStart) {
         pct = ((overallPct - phaseStart) / (phaseEnd - phaseStart)) * 100;
-        done = false;
-      } else {
-        pct = 0;
-        done = false;
       }
-      if (overallPct < phaseStart && idx === 0) {
-        pct = overallPct / phaseStart * 100;
-        done = false;
-      }
-      out += buildPhase(phase, pct, done, frame) + "\n";
+      out += renderPhase(phase, pct, done, frame) + "\n";
     });
 
-    out += "\n  STATUS: " + (overallPct < 100 ? "<span class=\"boot-active\">BOOTING...</span>" : "<span class=\"boot-active\">ESTABLISHING SESSION...</span>");
+    out += "\n  СТАТУС: " + (overallPct < 100
+      ? "<span class=\"boot-active\">ПОДКЛЮЧЕНИЕ...</span>"
+      : "<span class=\"boot-active\">ПРОВЕРКА ДОСТУПА...</span>");
 
-    el.innerHTML = out;
-    _timer = requestAnimationFrame(tick);
+    content.innerHTML = out;
+    timerId = requestAnimationFrame(tick);
   }
 
   tick();
 }
 
-export function finishBoot(mode) {
-  _aborted = true;
-  if (_timer) cancelAnimationFrame(_timer);
-  _timer = null;
+export function showBootDelay(onContinue) {
+  const actions = document.getElementById("boot-actions");
+  if (!actions) return;
+  actions.classList.add("active");
+  actions.innerHTML =
+    '<div style="color:var(--term-dim);margin-bottom:0.5rem">ЗАДЕРЖКА СЕТИ. Проверка сессии заняла слишком много времени.</div>' +
+    '<button type="button" class="boot-continue-btn" id="boot-continue-btn">ПРОДОЛЖИТЬ</button>';
+  const btn = document.getElementById("boot-continue-btn");
+  if (btn) {
+    btn.onclick = () => {
+      clearActions();
+      if (typeof onContinue === "function") onContinue();
+    };
+  }
+}
 
-  const el = document.getElementById("boot-content");
-  const header =
-    "╔══════════════════════════════════════╗\n" +
-    "║         FOODTRACKER v2.0            ║\n" +
-    "║         BOOT SEQUENCE               ║\n" +
-    "╚══════════════════════════════════════╝\n\n";
+export async function finishBoot(mode, options = {}) {
+  const minVisibleMs = options.minVisibleMs ?? 1400;
+  const resultHoldMs = options.resultHoldMs ?? 420;
 
-  const phases = [
-    "INITIALIZING CORE",
-    "VERIFYING SESSION TOKEN",
-    "ESTABLISHING SECURE LINK",
-    "LOADING USER CONTEXT",
-  ];
-
-  let out = header;
-  phases.forEach((p) => {
-    out += buildPhase(p, 100, true, 0) + "\n";
-  });
-
-  if (mode === "app") {
-    out += "\n  STATUS: <span style=\"color:var(--term-fg)\">CONNECTION ESTABLISHED  ✓</span>\n\n  Добро пожаловать.";
-  } else {
-    out += "\n  STATUS: <span style=\"color:var(--term-dim)\">NO ACTIVE SESSION — GUEST MODE</span>\n\n  Войдите или зарегистрируйтесь.";
+  const elapsed = performance.now() - bootStartedAt;
+  const waitMore = Math.max(0, minVisibleMs - elapsed);
+  if (waitMore > 0) {
+    await new Promise((resolve) => setTimeout(resolve, waitMore));
   }
 
-  if (el) el.innerHTML = out;
+  aborted = true;
+  if (timerId) cancelAnimationFrame(timerId);
+  timerId = null;
+  clearActions();
 
-  setTimeout(() => {
-    document.getElementById("boot-screen").classList.add("hidden");
+  const content = document.getElementById("boot-content");
+  if (content) {
+    let out = headerText();
+    phasesText().forEach((phase) => {
+      out += renderPhase(phase, 100, true, 0) + "\n";
+    });
+
     if (mode === "app") {
-      document.getElementById("auth-screen").classList.add("hidden");
-      document.getElementById("app-shell-wrapper").classList.remove("hidden");
+      out += "\n  СТАТУС: <span style=\"color:var(--term-fg)\">СЕССИЯ АКТИВНА  ✓</span>\n\n  Добро пожаловать.";
     } else {
-      document.getElementById("auth-screen").classList.remove("hidden");
-      document.getElementById("app-shell-wrapper").classList.add("hidden");
+      out += "\n  СТАТУС: <span style=\"color:var(--term-dim)\">ТРЕБУЕТСЯ ВХОД</span>\n\n  Войдите или зарегистрируйтесь.";
     }
-  }, mode === "app" ? 300 : 400);
+    content.innerHTML = out;
+  }
+
+  await new Promise((resolve) => setTimeout(resolve, resultHoldMs));
+
+  const boot = document.getElementById("boot-screen");
+  if (boot) boot.classList.add("hidden");
+
+  if (mode === "app") {
+    document.getElementById("auth-screen").classList.add("hidden");
+    document.getElementById("app-shell-wrapper").classList.remove("hidden");
+  } else {
+    document.getElementById("auth-screen").classList.remove("hidden");
+    document.getElementById("app-shell-wrapper").classList.add("hidden");
+  }
 }
