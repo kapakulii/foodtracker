@@ -1,5 +1,6 @@
 __pycache__/
 *.pyc
-static/
+static/*
+!static/js/
 data/foodtracker.db
 .env
