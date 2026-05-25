@@ -3,7 +3,7 @@ import { loadData } from "../app.js";
 
 export function handleUnauthorized() {
   state.globalProfile = null;
-  document.body.classList.add("auth-screen-shown");
+  document.body.classList.add("boot-layer", "auth-screen-shown");
   document.getElementById("app-shell-wrapper").classList.add("hidden");
   document.getElementById("auth-screen").classList.remove("hidden");
 }
@@ -34,7 +34,7 @@ export async function handleAuthSubmit() {
     state.currentUserEmail = user.email;
     document.getElementById("auth-screen").classList.add("hidden");
     document.getElementById("app-shell-wrapper").classList.remove("hidden");
-    document.body.classList.remove("auth-screen-shown");
+    document.body.classList.remove("boot-layer", "auth-screen-shown");
     loadData();
   } catch (e) { showAuthError("Ошибка соединения: " + e.message); }
 }
@@ -58,7 +58,7 @@ export async function handleLogout() {
   state.globalProfile = null;
   state.globalEntries = [];
   state.globalDailyMetrics = [];
-  document.body.classList.add("auth-screen-shown");
+  document.body.classList.add("boot-layer", "auth-screen-shown");
   document.getElementById("user-email").textContent = "";
   document.getElementById("app-shell-wrapper").classList.add("hidden");
   document.getElementById("auth-screen").classList.remove("hidden");

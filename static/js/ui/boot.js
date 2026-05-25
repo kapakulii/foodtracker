@@ -64,6 +64,7 @@ export function startBoot() {
   const boot = document.getElementById("boot-screen");
   const content = document.getElementById("boot-content");
   if (!boot || !content) return;
+  document.body.classList.add("boot-layer");
   boot.classList.remove("hidden");
   clearActions();
 
@@ -154,6 +155,7 @@ export async function finishBoot(mode, options = {}) {
   if (boot) boot.classList.add("hidden");
 
   if (mode === "app") {
+    document.body.classList.remove("boot-layer");
     document.getElementById("auth-screen").classList.add("hidden");
     document.getElementById("app-shell-wrapper").classList.remove("hidden");
   } else {
